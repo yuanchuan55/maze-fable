@@ -6,55 +6,610 @@
 <title>迷宫寓言</title>
 <style>
 :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#020817;color:#e5edf7;font-family:system-ui,-apple-system,"Microsoft YaHei",sans-serif}
-main{max-width:1100px;margin:auto;padding:16px}.head{border-bottom:1px solid #334155;padding-bottom:12px}.head h1{margin:0;font-size:30px;letter-spacing:.15em}.muted{color:#94a3b8;font-size:13px}.stats{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.pill,.panel{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px 12px}.layout{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:12px}.board{border:1px solid #334155;border-radius:10px;overflow:hidden;background:#0f172a}.board canvas{display:block;width:100%;height:auto}.buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}button{border:1px solid #475569;border-radius:9px;background:#1e293b;color:#f1f5f9;padding:12px;cursor:pointer;font-size:15px;touch-action: manipulation;}button.primary{background:#fbbf24;color:#111827;border-color:#fbbf24;font-weight:700}.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-width:260px;margin:12px auto}.pad button{font-size:22px}.panel{margin-bottom:10px}.panel h3{font-size:15px;margin:0 0 10px}.big{font-size:30px;font-weight:750}.log{font-size:12px;color:#94a3b8;max-height:150px;overflow:auto;line-height:1.7}.bottom{margin-top:12px}@media(max-width:760px){main{padding:10px}.layout{grid-template-columns:1fr}.side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.panel{margin:0}.head h1{font-size:25px}}
+main{max-width:1100px;margin:auto;padding:16px}.head{border-bottom:1px solid #334155;padding-bottom:12px}.head h1{margin:0;font-size:30px;letter-spacing:.15em}.muted{color:#94a3b8;font-size:13px}.stats{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;align-items:center}.pill,.panel{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px 12px}.layout{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:12px}.board{border:1px solid #334155;border-radius:10px;overflow:hidden;background:#0f172a;position:relative}.board canvas{display:block;width:100%;height:auto}.buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}button{border:1px solid #475569;border-radius:9px;background:#1e293b;color:#f1f5f9;padding:12px;cursor:pointer;font-size:15px;touch-action:manipulation}button.primary{background:#fbbf24;color:#111827;border-color:#fbbf24;font-weight:700}.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-width:260px;margin:12px auto}.pad button{font-size:22px}.panel{margin-bottom:10px}.panel h3{font-size:15px;margin:0 0 10px}.big{font-size:30px;font-weight:750}
+.spawn-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.95);border:1px solid #334155;border-radius:12px;padding:18px 20px;width:80%;max-width:320px;z-index:10;display:none;backdrop-filter:blur(4px)}
+.spawn-panel h3{margin:0 0 12px;text-align:center;color:#f1f5f9;font-size:16px}
+.spawn-list{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto}
+.spawn-list button{width:100%;text-align:left;font-size:14px;padding:10px 12px}
+.vol-pill{display:flex;align-items:center;gap:8px;cursor:default}
+.vol-pill input[type=range]{width:90px;height:4px;accent-color:#fbbf24;background:#334155;border-radius:2px;outline:none}
+@media(max-width:760px){main{padding:10px}.layout{grid-template-columns:1fr}.side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.panel{margin:0}.head h1{font-size:25px}}
 </style>
 </head>
 <body><main>
-<header class="head"><h1>迷宫寓言</h1><div class="muted">上一代走到哪里，下一代便从哪里继续。每条走过的路，都是后来者的地图。</div></header>
+<header class="head"><h1>迷宫寓言 <span style="font-size:14px;font-weight:400;letter-spacing:.05em;color:#94a3b8">作者：越穿55、豆包、ChatGPT</span></h1><div class="muted">每条走过的路，都是后来者的地图。</div></header>
 <div class="stats">
-<div class="pill">探索者 <b id="gen">1 号</b></div><div class="pill">该名角色剩余时间 <b id="time">20.0</b> 秒</div><div class="pill">已探索 <b id="reveal">0%</b></div>
+<div class="pill">探索者 <b id="gen">1 号</b></div>
+<div class="pill">该名角色剩余时间 <b id="time">20.0</b> 秒</div>
+<div class="pill">已探索 <b id="reveal">0%</b></div>
+<div class="pill" style="cursor:pointer" id="soundBtn">🔊 音效：开</div>
+<div class="pill vol-pill">BGM <input type="range" id="bgmVol" min="0" max="0.2" step="0.01" value="0.08"></div>
 </div>
 <div class="layout"><section>
-<div class="board"><canvas id="maze"></canvas></div><div class="muted" id="pos" style="margin-top:7px">当前位置：—</div>
+<div class="board">
+<canvas id="maze"></canvas>
+<div id="spawnSelector" class="spawn-panel">
+<h3>选择下一代火种的起点</h3>
+<div id="spawnList" class="spawn-list"></div>
+</div>
+</div>
+<div class="muted" id="pos" style="margin-top:7px">当前位置：—</div>
 <div class="pad"><div></div><button data-dir="0,-1">↑</button><div></div><button data-dir="-1,0">←</button><button data-dir="0,1">↓</button><button data-dir="1,0">→</button></div>
 <div class="buttons"><button class="primary" id="start">▶ 开始</button><button id="pause">Ⅱ 暂停</button><button id="new">↻ 新迷宫</button></div>
 <div class="muted" style="margin-top:8px">方向键 / WASD 控制。每名角色存续 20 秒。地图、路径和探索标记由所有世代共同继承。</div>
 </section><aside class="side">
 <div class="panel"><h3>当前角色</h3><div class="big" id="symbol" style="color:#38bdf8">▲</div><div id="style" class="muted">三角形 · 蓝色</div><div style="margin-top:8px">剩余时间</div><div class="big" id="time2">20.0 秒</div><div class="muted" id="status">等待开始</div></div>
 <div class="panel"><h3>全局统计</h3><div class="muted">地图尺寸：39 × 27</div><div style="margin-top:7px">累计步数：<b id="steps">0</b></div><div style="margin-top:7px">已接力世代：<b id="count">1</b></div></div>
-<div class="panel" style="grid-column:1/-1"><h3>探索日志</h3><div id="log" class="log"></div></div>
 </aside></div>
-<div class="bottom muted">提示：走进死胡同并不一定是白费力气——如果留下记录，后来者就知道这条路不通。</div>
 </main>
 <script>
 (()=>{
 const $=id=>document.getElementById(id),canvas=$('maze'),ctx=canvas.getContext('2d');
 const W=39,H=27,C=20,LIFE=20,colors=['#38bdf8','#fb923c','#4ade80','#2dd4bf','#e879f9','#fb7185','#c084fc','#facc15'],shapes=['▲','●','◆','■','★','⬟','⬢','✦'],names=['三角形','圆形','菱形','方形','星形','五边形','六边形','星芒形'],colorNames=['蓝色','橙色','绿色','青色','粉色','红色','紫色','金色'];
 canvas.width=W*C;canvas.height=H*C;
+
 let maze,seen,owner,x,y,gen,time,steps,running,won,log,marks,last=0;
+let pathCounts, deadEnds, maxDist, endingStage;
+let startX, startY, endX, endY;
+let floatTexts = [];
+let deadEndTip = '';
+let soundEnabled = true;
+let bgmVolume = 0.08;
+let selectingSpawn = false;
+let audioCtx, bgmGain, sfxGain, bgmStarted = false;
+let bgmLoopTimer;
+
+const deadEndQuotes = [
+    "许多探索者终其一生，都在证明此路不通。",
+    "失败的探索，同样是文明的铺路石。",
+    "有些路，总得有人先走一遍，证明它走不通。",
+    "无人记得他们的名字，但他们排除了一个又一个错误。",
+    "科学史里，写满了没有走到终点的旅程。",
+    "这不是徒劳，只是让后来者少走一次弯路。",
+    "每一条死胡同，都曾有人满怀希望地踏入。",
+    "严谨的探索者，从不畏惧走进死路。",
+    "有些答案，就是「此路不通」四个字。",
+    "他们没能走出去，但他们照亮了身后的路。",
+    "有些推测，事后缩短了整体探索时间；他们被称作天才。",
+    "被记住的人很少，但排除错误的人很多。",
+    "迷宫里没有白走的路，只有还没被理解的路。",
+    "一次失败的探索，也能成为后来者的坐标。",
+    "重要的不只是走多远，而是把判断留给后人。",
+    "所谓突破，不过是站在无数次失败的尽头。"
+];
+
+function ensureAudio(){
+    if(!audioCtx){
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if(audioCtx.state === 'suspended'){
+        audioCtx.resume();
+    }
+}
+
+// ===== 舒缓旋律BGM 全新版本 =====
+function startBGM(){
+    if(bgmStarted || !audioCtx) return;
+    bgmStarted = true;
+
+    bgmGain = audioCtx.createGain();
+    bgmGain.gain.value = soundEnabled ? bgmVolume : 0;
+    bgmGain.connect(audioCtx.destination);
+    
+    sfxGain = audioCtx.createGain();
+    sfxGain.gain.value = 1;
+    sfxGain.connect(audioCtx.destination);
+
+    // 空间混响延迟
+    const delay = audioCtx.createDelay();
+    delay.delayTime.value = 1.2;
+    const feedback = audioCtx.createGain();
+    feedback.gain.value = 0.35;
+    delay.connect(feedback);
+    feedback.connect(delay);
+    delay.connect(bgmGain);
+
+    // 柔和低音铺底（每小节一个根音）
+    const bassNotes = [130.81, 174.61, 196.00, 130.81]; // C3 F3 G3 C3
+    let bassIdx = 0;
+
+    function playBass(freq){
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 0.3);
+        gain.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 1.5);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 3.8);
+        osc.connect(gain);
+        gain.connect(bgmGain);
+        gain.connect(delay);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 4);
+    }
+
+    // 分解琶音旋律（舒缓上行下行）
+    const melody = [
+        261.63, 329.63, 392.00, 493.88, 392.00, 329.63,
+        349.23, 440.00, 523.25, 440.00, 349.23,
+        392.00, 493.88, 587.33, 493.88, 392.00,
+        261.63, 329.63, 392.00, 329.63
+    ];
+    let noteIdx = 0;
+    const noteStep = 0.6; // 每个音符间隔秒数，越大约舒缓
+
+    function playNote(freq){
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.14, audioCtx.currentTime + 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.8);
+        osc.connect(gain);
+        gain.connect(bgmGain);
+        gain.connect(delay);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 2);
+    }
+
+    // 极轻高频空气感
+    function playAir(){
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = 1568;
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.03, audioCtx.currentTime + 0.5);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 3);
+        osc.connect(gain);
+        gain.connect(delay);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 3.2);
+    }
+
+    // 主循环
+    function loop(){
+        if(!soundEnabled) return;
+        playNote(melody[noteIdx % melody.length]);
+        if(noteIdx % 6 === 0){
+            playBass(bassNotes[bassIdx % bassNotes.length]);
+            bassIdx++;
+        }
+        if(noteIdx % 12 === 0){
+            playAir();
+        }
+        noteIdx++;
+    }
+
+    // 启动循环
+    loop();
+    bgmLoopTimer = setInterval(loop, noteStep * 1000);
+}
+
+// BGM音量调节
+$('bgmVol').addEventListener('input', e=>{
+    bgmVolume = parseFloat(e.target.value);
+    if(bgmGain && soundEnabled){
+        bgmGain.gain.value = bgmVolume;
+    }
+});
+
+function playTone(freq, duration, volume=0.1, type='sine'){
+    if(!soundEnabled || !audioCtx) return;
+    let osc = audioCtx.createOscillator();
+    let gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(sfxGain);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+}
+
+function sfxStep(){ playTone(180, 0.06, 0.04, 'triangle'); }
+function sfxDeadEnd(){ 
+    playTone(220, 0.15, 0.08, 'sawtooth');
+    setTimeout(()=>playTone(165, 0.2, 0.06, 'sawtooth'), 80);
+}
+function sfxHandoff(){
+    playTone(330, 0.12, 0.07, 'sine');
+    setTimeout(()=>playTone(440, 0.18, 0.06, 'sine'), 100);
+}
+function sfxBreakthrough(){
+    playTone(523, 0.1, 0.08, 'sine');
+    setTimeout(()=>playTone(659, 0.15, 0.07, 'sine'), 90);
+}
+function sfxWin(){
+    [523, 659, 784, 1047].forEach((f,i)=>{
+        setTimeout(()=>playTone(f, 0.4, 0.09, 'sine'), i*180);
+    });
+}
+function sfxButton(){ playTone(440, 0.05, 0.03, 'square'); }
+
+function toggleSound(){
+    soundEnabled = !soundEnabled;
+    $('soundBtn').textContent = soundEnabled ? '🔊 音效：开' : '🔇 音效：关';
+    if(bgmGain) bgmGain.gain.value = soundEnabled ? bgmVolume : 0;
+}
+
 function rand(n){return Math.floor(Math.random()*n)}
-function generate(){maze=Array.from({length:H},()=>Array(W).fill(1));let st=[[1,1]];maze[1][1]=0;
-while(st.length){let[a,b]=st[st.length-1],o=[];for(let[dx,dy]of[[0,-2],[2,0],[0,2],[-2,0]]){let nx=a+dx,ny=b+dy;if(nx>0&&ny>0&&nx<W-1&&ny<H-1&&maze[ny][nx]===1)o.push([nx,ny,dx,dy])}
-if(!o.length){st.pop();continue}let[nx,ny,dx,dy]=o[rand(o.length)];maze[b+dy/2][a+dx/2]=0;maze[ny][nx]=0;st.push([nx,ny])}
-for(let i=0;i<Math.floor(W*H*.002);i++){let a=1+rand(W-2),b=1+rand(H-2);if(maze[b][a]===1&&((maze[b][a-1]===0&&maze[b][a+1]===0)||(maze[b-1][a]===0&&maze[b+1][a]===0)))maze[b][a]=0}maze[H-2][W-2]=0}
-function reveal(){for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(Math.abs(dx)+Math.abs(dy)>1)continue;let a=x+dx,b=y+dy;if(a>=0&&b>=0&&a<W&&b<H)seen[b][a]=true}}
-function note(s){log.unshift(s);log=log.slice(0,12);$('log').innerHTML=log.map(v=>'<div>› '+v+'</div>').join('')}
-function fresh(){generate();seen=Array.from({length:H},()=>Array(W).fill(false));owner=Array.from({length:H},()=>Array(W).fill(0));x=1;y=1;gen=1;time=LIFE;steps=0;running=false;won=false;log=[];marks=[];owner[y][x]=gen;reveal();note('1 号探索者从入口出发。');note('新迷宫生成：小心岔路和死胡同。');render()}
-function move(dx,dy){if(!running||won)return;let nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=W||ny>=H||maze[ny][nx]===1)return;x=nx;y=ny;steps++;owner[y][x]=gen;reveal();if(x===W-2&&y===H-2){won=true;running=false;note(gen+' 号探索者找到了出口！接力成功。')}render()}
-function handoff(){marks.push({x,y,n:gen});note(gen+' 号时间耗尽，在坐标 ('+x+','+y+') 留下记录。');gen++;time=LIFE;owner[y][x]=gen;reveal();note(gen+' 号从上一代的位置接续探索。');render()}
-function marker(px,py,n,scale){let i=(n-1)%colors.length;ctx.save();ctx.translate(px,py);ctx.fillStyle=colors[i];ctx.strokeStyle='#e0f2fe';ctx.lineWidth=1.5;ctx.shadowColor=colors[i];ctx.shadowBlur=9;ctx.beginPath();if(i===0){ctx.moveTo(0,-7*scale);ctx.lineTo(7*scale,6*scale);ctx.lineTo(-7*scale,6*scale);ctx.closePath()}else if(i===1)ctx.arc(0,0,6.5*scale,0,Math.PI*2);else if(i===2){ctx.moveTo(0,-7*scale);ctx.lineTo(7*scale,0);ctx.lineTo(0,7*scale);ctx.lineTo(-7*scale,0);ctx.closePath()}else if(i===3)ctx.rect(-6*scale,-6*scale,12*scale,12*scale);else ctx.arc(0,0,6.5*scale,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.shadowBlur=0;ctx.fillStyle='#07111f';ctx.font='bold '+Math.max(9,10*scale)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(n),0,.5);ctx.restore()}
-function render(){ctx.fillStyle='#030a16';ctx.fillRect(0,0,canvas.width,canvas.height);
-for(let b=0;b<H;b++)for(let a=0;a<W;a++){let px=a*C,py=b*C;if(!seen[b][a]){ctx.fillStyle='#07101f';ctx.fillRect(px,py,C,C);continue}if(maze[b][a]===1){ctx.fillStyle='#34465c';ctx.fillRect(px,py,C,C);ctx.fillStyle='#40556c';ctx.fillRect(px+2,py+2,C-4,C-4);ctx.strokeStyle='#243449';ctx.strokeRect(px+1,py+1,C-2,C-2)}else{ctx.fillStyle='#15283c';ctx.fillRect(px,py,C,C);ctx.fillStyle='#1c344b';ctx.fillRect(px+3,py+3,C-6,C-6);if(owner[b][a]>0){ctx.fillStyle=colors[(owner[b][a]-1)%colors.length]+'66';ctx.fillRect(px+5,py+5,C-10,C-10)}}}
-for(let m of marks)if(seen[m.y][m.x])marker(m.x*C+C/2,m.y*C+C/2,m.n,.78);
-if(seen[H-2][W-2]||won){let ex=(W-2)*C+C/2,ey=(H-2)*C+C/2;ctx.fillStyle='#facc15';ctx.shadowColor='#facc15';ctx.shadowBlur=15;ctx.fillRect(ex-7,ey-7,14,14);ctx.shadowBlur=0;ctx.strokeStyle='#fff1a8';ctx.lineWidth=2;ctx.strokeRect(ex-10,ey-10,20,20)}
-marker(x*C+C/2,y*C+C/2,gen,1.18);$('gen').textContent=gen+' 号';$('time').textContent=time.toFixed(1);$('time2').textContent=time.toFixed(1)+' 秒';$('symbol').textContent=shapes[(gen-1)%8];$('symbol').style.color=colors[(gen-1)%8];$('style').textContent=names[(gen-1)%8]+' · '+colorNames[(gen-1)%8];
-let seenCount = 0;
-for(let i=0;i<H;i++) for(let j=0;j<W;j++) if(seen[i][j]) seenCount++;
-$('reveal').textContent=(seenCount/(W*H)*100).toFixed(1)+'%';
-$('steps').textContent=steps;$('count').textContent=gen;$('pos').textContent='当前位置：('+x+', '+y+') · '+(won?'已找到出口':running?'正在探索':'等待开始');$('status').textContent=won?'已找到出口！':running?'正在探索……':'等待开始'}
-$('start').onclick=()=>{if(!won){running=true;note(gen+' 号继续探索。');render()}};$('pause').onclick=()=>{running=!running;note(running?'继续探索。':'探索暂停。');render()};$('new').onclick=fresh;
-document.querySelectorAll('[data-dir]').forEach(b=>b.onclick=()=>{let d=b.dataset.dir.split(',').map(Number);move(d[0],d[1])});
-document.addEventListener('keydown',e=>{let d={ArrowUp:[0,-1],w:[0,-1],W:[0,-1],ArrowDown:[0,1],s:[0,1],S:[0,1],ArrowLeft:[-1,0],a:[-1,0],A:[-1,0],ArrowRight:[1,0],d:[1,0],D:[1,0]}[e.key];if(d&&running&&!won){e.preventDefault();move(...d)}});
+
+function generate(){
+    maze=Array.from({length:H},()=>Array(W).fill(1));
+    let st=[[1,1]];maze[1][1]=0;
+    while(st.length){
+        let[a,b]=st[st.length-1],o=[];
+        for(let[dx,dy]of[[0,-2],[2,0],[0,2],[-2,0]]){
+            let nx=a+dx,ny=b+dy;
+            if(nx>0&&ny>0&&nx<W-1&&ny<H-1&&maze[ny][nx]===1)
+                o.push([nx,ny,dx,dy])
+        }
+        if(!o.length){st.pop();continue}
+        let[nx,ny,dx,dy]=o[rand(o.length)];
+        maze[b+dy/2][a+dx/2]=0;maze[ny][nx]=0;
+        st.push([nx,ny])
+    }
+    for(let i=0;i<Math.floor(W*H*0.005);i++){
+        let a=1+rand(W-2),b=1+rand(H-2);
+        if(maze[b][a]===1&&((maze[b][a-1]===0&&maze[b][a+1]===0)||(maze[b-1][a]===0&&maze[b+1][a]===0)))
+            maze[b][a]=0
+    }
+
+    let cells = [];
+    for(let y=1;y<H-1;y++){
+        for(let x=1;x<W-1;x++){
+            if(maze[y][x] === 0) cells.push([x,y]);
+        }
+    }
+    const minDist = Math.floor((W + H) * 0.65);
+    while(true){
+        let s = cells[rand(cells.length)];
+        let e = cells[rand(cells.length)];
+        let dist = Math.abs(s[0]-e[0]) + Math.abs(s[1]-e[1]);
+        if(dist >= minDist){
+            startX = s[0]; startY = s[1];
+            endX = e[0]; endY = e[1];
+            break;
+        }
+    }
+}
+
+function reveal(){
+    for(let dy=-1;dy<=1;dy++)
+        for(let dx=-1;dx<=1;dx++){
+            if(Math.abs(dx)+Math.abs(dy)>1)continue;
+            let a=x+dx,b=y+dy;
+            if(a>=0&&b>=0&&a<W&&b<H)seen[b][a]=true
+        }
+}
+
+function addFloatText(text, x, y, color='#fbbf24', size=14){
+    floatTexts.push({text, x, y, life:1, maxLife:1, vy:-0.45, color, size});
+}
+
+function note(s){}
+
+function fresh(){
+    generate();
+    seen=Array.from({length:H},()=>Array(W).fill(false));
+    owner=Array.from({length:H},()=>Array(W).fill(0));
+    pathCounts=Array.from({length:H},()=>Array(W).fill(0));
+    deadEnds=Array.from({length:H},()=>Array(W).fill(false));
+    x=startX; y=startY;
+    gen=1;time=LIFE;steps=0;running=false;won=false;
+    log=[];marks=[];maxDist=0;endingStage=0;floatTexts=[];
+    deadEndTip = '';
+    selectingSpawn = false;
+    $('spawnSelector').style.display = 'none';
+    owner[y][x]=gen;pathCounts[y][x]=1;reveal();
+    addFloatText('全新的未知领域', canvas.width/2, 60, '#94a3b8', 16);
+    sfxButton();
+    render();
+}
+
+function move(dx,dy){
+    if(!running||won||selectingSpawn)return;
+    let nx=x+dx,ny=y+dy;
+    if(nx<0||ny<0||nx>=W||ny>=H||maze[ny][nx]===1)return;
+    x=nx;y=ny;steps++;
+    owner[y][x]=gen;
+    pathCounts[y][x]++;
+    reveal();
+    sfxStep();
+
+    let dist = Math.abs(x - startX) + Math.abs(y - startY);
+    if(dist > maxDist){
+        maxDist = dist;
+        addFloatText('探索边界向前推进！', canvas.width/2, 70, '#facc15', 16);
+        sfxBreakthrough();
+    }
+
+    let exits = 0;
+    for(let[ddx,ddy] of [[0,-1],[1,0],[0,1],[-1,0]]){
+        let ax=x+ddx, ay=y+ddy;
+        if(ax>=0&&ay>=0&&ax<W&&ay<H&&maze[ay][ax]===0) exits++;
+    }
+    if(exits === 1 && !deadEnds[y][x]){
+        deadEnds[y][x] = true;
+        deadEndTip = deadEndQuotes[rand(deadEndQuotes.length)];
+        sfxDeadEnd();
+    }
+
+    if(x===endX && y===endY){
+        won=true;running=false;
+        deadEndTip = '';
+        addFloatText('出口已被找到！', canvas.width/2, 60, '#facc15', 18);
+        sfxWin();
+        showEnding();
+    }
+    render();
+}
+
+function handoff(){
+    marks.push({x,y,n:gen});
+    addFloatText(`第${gen}代火种熄灭`, canvas.width/2, 90, '#94a3b8', 14);
+    sfxHandoff();
+    running = false;
+    selectingSpawn = true;
+    showSpawnSelector();
+    render();
+}
+
+function showSpawnSelector(){
+    const list = $('spawnList');
+    list.innerHTML = '';
+    [...marks].reverse().forEach(m=>{
+        const btn = document.createElement('button');
+        btn.textContent = `第 ${m.n} 代 · 坐标(${m.x}, ${m.y})`;
+        btn.onclick = ()=>selectSpawn(m.x, m.y, m.n);
+        list.appendChild(btn);
+    });
+    $('spawnSelector').style.display = 'block';
+}
+
+function selectSpawn(sx, sy, fromGen){
+    selectingSpawn = false;
+    $('spawnSelector').style.display = 'none';
+    gen++;
+    time = LIFE;
+    x = sx;
+    y = sy;
+    owner[y][x] = gen;
+    pathCounts[y][x]++;
+    reveal();
+    addFloatText(`第${gen}代重返节点继续前行`, canvas.width/2, 70, '#38bdf8', 15);
+    running = true;
+    render();
+}
+
+function marker(px,py,n,scale){
+    let i=(n-1)%colors.length;
+    ctx.save();
+    ctx.translate(px,py);
+    ctx.fillStyle=colors[i];
+    ctx.strokeStyle='#e0f2fe';
+    ctx.lineWidth=1.5;
+    ctx.shadowColor=colors[i];
+    ctx.shadowBlur=9;
+    ctx.beginPath();
+    if(i===0){
+        ctx.moveTo(0,-7*scale);
+        ctx.lineTo(7*scale,6*scale);
+        ctx.lineTo(-7*scale,6*scale);
+        ctx.closePath();
+    }else if(i===1){
+        ctx.arc(0,0,6.5*scale,0,Math.PI*2);
+    }else if(i===2){
+        ctx.moveTo(0,-7*scale);
+        ctx.lineTo(7*scale,0);
+        ctx.lineTo(0,7*scale);
+        ctx.lineTo(-7*scale,0);
+        ctx.closePath();
+    }else if(i===3){
+        ctx.rect(-6*scale,-6*scale,12*scale,12*scale);
+    }else{
+        ctx.arc(0,0,6.5*scale,0,Math.PI*2);
+    }
+    ctx.fill();ctx.stroke();
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#07111f';
+    ctx.font='bold '+Math.max(9,10*scale)+'px sans-serif';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillText(String(n),0,.5);
+    ctx.restore();
+}
+
+function showEnding(){
+    endingStage = 1;
+    render();
+    setTimeout(()=>{
+        endingStage = 2;
+        render();
+    }, 3500);
+}
+
+function render(){
+    ctx.fillStyle='#030a16';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    for(let b=0;b<H;b++)
+        for(let a=0;a<W;a++){
+            let px=a*C,py=b*C;
+            if(!seen[b][a]){
+                ctx.fillStyle='#07101f';
+                ctx.fillRect(px,py,C,C);
+                continue;
+            }
+            if(maze[b][a]===1){
+                ctx.fillStyle='#34465c';
+                ctx.fillRect(px,py,C,C);
+                ctx.fillStyle='#40556c';
+                ctx.fillRect(px+2,py+2,C-4,C-4);
+                ctx.strokeStyle='#243449';
+                ctx.strokeRect(px+1,py+1,C-2,C-2)
+            }else{
+                if(pathCounts[b][a] >= 2){
+                    ctx.fillStyle='#1c344b';
+                }else{
+                    ctx.fillStyle='#182a3d';
+                }
+                ctx.fillRect(px,py,C,C);
+                ctx.fillStyle='rgba(255,255,255,0.04)';
+                ctx.fillRect(px+3,py+3,C-6,C-6);
+                
+                if(owner[b][a]>0){
+                    ctx.fillStyle=colors[(owner[b][a]-1)%colors.length]+'66';
+                    ctx.fillRect(px+5,py+5,C-10,C-10)
+                }
+                
+                if(deadEnds[b][a]){
+                    ctx.strokeStyle='#fb7185';
+                    ctx.lineWidth=2;
+                    ctx.beginPath();
+                    ctx.moveTo(px+6, py+6);
+                    ctx.lineTo(px+C-6, py+C-6);
+                    ctx.moveTo(px+C-6, py+6);
+                    ctx.lineTo(px+6, py+C-6);
+                    ctx.stroke();
+                }
+            }
+        }
+
+    for(let m of marks)
+        if(seen[m.y][m.x])
+            marker(m.x*C+C/2,m.y*C+C/2,m.n,.78);
+
+    if(seen[endY][endX]||won){
+        let ex=endX*C+C/2, ey=endY*C+C/2;
+        ctx.fillStyle='#facc15';
+        ctx.shadowColor='#facc15';
+        ctx.shadowBlur=15;
+        ctx.fillRect(ex-7,ey-7,14,14);
+        ctx.shadowBlur=0;
+        ctx.strokeStyle='#fff1a8';
+        ctx.lineWidth=2;
+        ctx.strokeRect(ex-10,ey-10,20,20);
+    }
+
+    marker(x*C+C/2,y*C+C/2,gen,1.18);
+
+    if(deadEndTip){
+        ctx.save();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.font = 'bold 24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 8;
+        ctx.fillText(deadEndTip, canvas.width/2, 18);
+        ctx.restore();
+    }
+
+    $('gen').textContent=gen+' 号';
+    $('time').textContent=time.toFixed(1);
+    $('time2').textContent=time.toFixed(1)+' 秒';
+    $('symbol').textContent=shapes[(gen-1)%8];
+    $('symbol').style.color=colors[(gen-1)%8];
+    $('style').textContent=names[(gen-1)%8]+' · '+colorNames[(gen-1)%8];
+    
+    let seenCount = 0;
+    for(let i=0;i<H;i++) for(let j=0;j<W;j++) if(seen[i][j]) seenCount++;
+    $('reveal').textContent=(seenCount/(W*H)*100).toFixed(1)+'%';
+    $('steps').textContent=steps;
+    $('count').textContent=gen;
+    $('pos').textContent='当前位置：('+x+', '+y+') · '+(won?'已找到出口':running?'正在探索':'等待开始');
+    $('status').textContent=won?'已找到出口！':running?'正在探索……':'等待开始';
+
+    for(let i = floatTexts.length - 1; i >= 0; i--){
+        let t = floatTexts[i];
+        t.y += t.vy;
+        t.life -= 0.015;
+        if(t.life <= 0) floatTexts.splice(i, 1);
+    }
+    for(let t of floatTexts){
+        ctx.save();
+        ctx.globalAlpha = t.life;
+        ctx.fillStyle = t.color;
+        ctx.font = `bold ${t.size}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(t.text, t.x, t.y);
+        ctx.restore();
+    }
+
+    if(endingStage === 1){
+        ctx.fillStyle='rgba(3,10,22,0.88)';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle='#facc15';
+        ctx.font='bold 32px sans-serif';
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.fillText(`第 ${gen} 代探索者 成功走出迷宫`, canvas.width/2, canvas.height/2 - 20);
+        ctx.fillStyle='#94a3b8';
+        ctx.font='16px sans-serif';
+        ctx.fillText('历史将铭记这位最终的突破者', canvas.width/2, canvas.height/2 + 20);
+    }else if(endingStage === 2){
+        ctx.fillStyle='rgba(3,10,22,0.94)';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        
+        let deadCount = 0;
+        for(let i=0;i<H;i++) for(let j=0;j<W;j++) if(deadEnds[i][j]) deadCount++;
+        
+        ctx.fillStyle='#e5edf7';
+        ctx.font='bold 24px sans-serif';
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.fillText('走出迷宫的，从来不是一代人', canvas.width/2, canvas.height/2 - 80);
+        
+        ctx.font='15px sans-serif';
+        ctx.fillStyle='#94a3b8';
+        ctx.fillText(`共有 ${gen} 代探索者投身其中`, canvas.width/2, canvas.height/2 - 40);
+        ctx.fillText(`累计行走 ${steps} 步`, canvas.width/2, canvas.height/2 - 15);
+        ctx.fillText(`探明 ${deadCount} 处死胡同，排除无数错误路径`, canvas.width/2, canvas.height/2 + 10);
+        ctx.fillText(`验证了一代又一代人留下的猜想与足迹`, canvas.width/2, canvas.height/2 + 35);
+        
+        ctx.fillStyle='#facc15';
+        ctx.font='14px sans-serif';
+        ctx.fillText('历史记住了最后走出来的人', canvas.width/2, canvas.height/2 + 75);
+        ctx.fillText('但走出迷宫这件事，属于所有毅然踏入迷宫的人', canvas.width/2, canvas.height/2 + 95);
+    }
+}
+
+$('start').onclick=()=>{
+    if(!won && !selectingSpawn){
+        ensureAudio();
+        startBGM();
+        running=true;
+        sfxButton();
+        render();
+    }
+};
+$('pause').onclick=()=>{
+    if(selectingSpawn) return;
+    running=!running;
+    sfxButton();
+    render();
+};
+$('new').onclick=fresh;
+$('soundBtn').onclick=toggleSound;
+
+document.querySelectorAll('[data-dir]').forEach(b=>b.onclick=()=>{
+    let d=b.dataset.dir.split(',').map(Number);
+    move(d[0],d[1])
+});
+
+document.addEventListener('keydown',e=>{
+    let d={ArrowUp:[0,-1],w:[0,-1],W:[0,-1],ArrowDown:[0,1],s:[0,1],S:[0,1],ArrowLeft:[-1,0],a:[-1,0],A:[-1,0],ArrowRight:[1,0],d:[1,0],D:[1,0]}[e.key];
+    if(d&&running&&!won){e.preventDefault();move(...d)}
+});
 
 let touchStartX = 0, touchStartY = 0;
 canvas.addEventListener('touchstart', e=>{
@@ -63,7 +618,7 @@ canvas.addEventListener('touchstart', e=>{
     e.preventDefault();
 }, {passive: false});
 canvas.addEventListener('touchend', e=>{
-    if(!running || won) return;
+    if(!running || won || selectingSpawn) return;
     let dx = e.changedTouches[0].clientX - touchStartX;
     let dy = e.changedTouches[0].clientY - touchStartY;
     if(Math.abs(dx) > Math.abs(dy)){
@@ -74,7 +629,18 @@ canvas.addEventListener('touchend', e=>{
     e.preventDefault();
 }, {passive: false});
 
-function tick(t){if(!last)last=t;let dt=Math.min(.1,(t-last)/1000);last=t;if(running&&!won){time-=dt;if(time<=0){time=0;handoff()}else render()}requestAnimationFrame(tick)}
-fresh();requestAnimationFrame(tick);
+function tick(t){
+    if(!last)last=t;
+    let dt=Math.min(.1,(t-last)/1000);
+    last=t;
+    if(running&&!won){
+        time-=dt;
+        if(time<=0){time=0;handoff()}
+        else render()
+    }
+    requestAnimationFrame(tick)
+}
+fresh();
+requestAnimationFrame(tick);
 })();
 </script></body></html>
